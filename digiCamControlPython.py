@@ -178,7 +178,7 @@ class Camera:
             print("Error: %s" % r[109:]) # Format output message
             return -1
         else:           # Success
-            returnValue = r[96:-6]
+            returnValue = r[99:-6]
             print("Current %s: %s" % (cmd, returnValue)) # Format output message
             return returnValue
             
@@ -189,8 +189,7 @@ class Camera:
             print("Error: %s" % r[109:]) # Format output message
             return -1
         else:           # Success
-            returnList = r[96:-6].split(",") # Format response and turn into a list
-            returnList = [e[1:-1] for e in returnList] # Remove "" from string
+            returnList = r[99:-6].replace('"','').split(",") # Format response, Remove " from string, and turn into a list
             print("List of all possible %ss: %s" % (cmd, returnList)) # Format output message
             return returnList
 
