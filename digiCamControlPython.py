@@ -3,235 +3,348 @@ import subprocess
 import time
 import psutil
 
+
 # Simple python class to use digiCamControl via the single command system to control your camera.
 # Digicamcontrol (https://digicamcontrol.com/) needs to be installed.
 # For documentation please visit https://github.com/Eagleshot/digiCamControlPython
 
 class Camera:
-    'Python interface for the open source digicamcontrol software. Initialize the program by specifying where digiCamControl is installed. If left empty, the default location (C:/Program Files (x86)/digiCamControl) will be assumed. If openProgram is set to true, digiCamControl will automatically be opened in the background.'
-    captureCommand = "capture "
-    
-    def __init__(self, exeDir = r"C:\Program Files (x86)\digiCamControl", verbose = True):
-        
-        if (os.path.exists(exeDir + r"/CameraControlRemoteCmd.exe")): # Check if file path exists
-            self.exeDir = exeDir
-            self.verbose = verbose # TODO Add ability to mute output
-            
-            if not "CameraControl.exe" in (i.name() for i in psutil.process_iter()): # Open program if closed
-                self.openProgram()
+    """
+    Python interface for the open source digicam-control software. Initialize the program by specifying where
+    digiCamControl is installed. If left empty, the default location (C:/Program Files (x86)/digiCamControl) will be
+    assumed. If openProgram is set to true, digiCamControl will automatically be opened in the background.
+    """
+
+    def __init__(self, exe_dir: str = r'C:\Program Files (x86)\digiCamControl', verbose=True):
+
+        self.captureCommand = "Capture"  # Default capture command
+
+        if os.path.exists(exe_dir + r"/CameraControlRemoteCmd.exe"):  # Check if file path exists
+            self.exeDir = exe_dir
+            self.verbose = verbose  # TODO Add ability to mute output
+
+            if not ("CameraControl.exe" in (i.name() for i in psutil.process_iter())):  # Open program if closed
+                self.open_program()
                 time.sleep(10)
-        
+
         else:
             print("Error: digiCamControl not found.")
-            
-    
-    def openProgram(self):
-        'Opens the CameraControl.exe application.'
+
+    def open_program(self):
+        """
+        Opens the CameraControl.exe application.
+        :return:
+        """
         subprocess.Popen(self.exeDir + r"/CameraControl.exe")
-        
-    #%% Capture  
-    def capture(self, location = ""):
-        'Takes a photo - filename and location can be specified in string location, otherwise the default will be used.' 
-        r = self.runCmd(self.captureCommand + " " + location)
+
+    # %% Capture
+    def capture(self, location: str = "") -> int | str:
+        """
+        Takes a photo - filename and location can be specified in string location, otherwise the default will be used.
+        :param location: Location and filename of the image to be saved.
+        :return: an integer indicating the success of the operation
+        """
+        r = self.run_cmd(self.captureCommand + " " + location)
         if r == 0:
             print("Captured image.")
-            
-        return self.__getCmd("lastcaptured" )
-    
-    #%% Folder
-    def setFolder(self, folder: str):
-        'Set the folder where the pictures are saved.'
-        self.__setCmd("session.folder", folder)
 
-    def setImageName(self, name: str):
-        'Set the name of the images.'
-        self.__setCmd("session.name", name)
-        
-    def setCounter(self, counter = 0):
-        'Set the counter to a specific number (default = 0).'
-        self.__setCmd("session.Counter", str(counter))
-        
-    #%% Transfer mode
-    def setTransfer(self, location: str):
-        'Define where the pictures should be saved - "Save_to_camera_only", "Save_to_PC_only" or "Save:to_PC_and_camera"'
-        return self.runCmd("set transfer %s" % (location))
+        return self.__get_cmd("lastcaptured")
+
+    # %% Folder
+    def set_folder(self, folder: str):
+        """
+        Set the folder where the pictures are saved.
+        :param folder: Folder where the pictures are saved.
+        :return:
+        """
+        self.__set_cmd("session.folder", folder)
+
+    def set_image_name(self, name: str):
+        """
+        Set the name of the images.
+        :param name: Prefix of the image name.
+        :return:
+        """
+        self.__set_cmd("session.name", name)
+
+    def set_counter(self, counter: int = 0):
+        """
+        Set the counter to a specific number (default = 0).
+        :param counter: Integer number to set the counter to. default = 0
+        :return:
+        """
+        self.__set_cmd("session.Counter", str(counter))
+
+    # %% Transfer mode
+    def set_transfer(self, location: str) -> int:
+        """
+        Define where the pictures should be saved - "Save_to_camera_only", "Save_to_PC_only" or
+        "Save:to_PC_and_camera" :param location: Value to set the transfer mode to. Possible values:
+        "Save_to_camera_only", "Save_to_PC_only" or "Save:to_PC_and_camera" :return: Code indicating the success of
+        the operation
+        """
         print("The pictures will be saved to %s." % location)
+        return self.run_cmd("set transfer %s" % location)
 
-    #%% Autofocus
-    def showLiveView(self):
-        self.runCmd("do LiveViewWnd_Show")
+    # %% Autofocus
+    def show_live_view(self) -> int:
         print("Showing live view window.")
-    
-    def setAutofocus(self, status):
-        'Turn the autofocus on (default) or off - eg. "on" or "off"'
-        if status == True:
+        return self.run_cmd("do LiveViewWnd_Show")
+
+    def set_autofocus(self, status: bool = True):
+        """
+        Turn the autofocus on (default) or off.
+        :param status: Boolean value to turn the autofocus on or off. Default = True
+        :return:
+        """
+        if status:
             self.captureCommand = "Capture"
             print("Autofocus is on.")
         else:
             self.captureCommand = "CaptureNoAf"
             print("Autofocus is off.")
-    
-    #%% Shutterspeed
-    def setShutterspeed(self, shutterspeed: str):
-        'Set the shutter speed - eg. "1/50", "1/250" or 1s.'
-        return self.__setCmd("shutterspeed", shutterspeed)
-    
-    def getShutterspeed(self):
-        'Get the current shutter speed - eg. "1/50", "1/250" or 1s.'
-        return self.__getCmd("shutterspeed")
-    
-    def listShutterspeed(self):
-        'Get a list off all possible shutter speeds - eg. "1/50", "1/250" or 1s.'
-        return self.__listCmd("shutterspeed")
 
-    #%% ISO
-    def setIso(self, iso: int):
-        'Set the current ISO value - eg. 100, 200 or 400.'
-        return self.__setCmd("Iso", str(iso))
-     
-    def getIso(self,):
-        'Get the current ISO value - eg. 100, 200 or 400.'
-        return self.__getCmd("Iso")
+    # %% Shutterspeed
+    def set_shutterspeed(self, shutter_speed: str) -> int:
+        """
+        Set the shutter speed
+        :param shutter_speed: Set the shutter speed - e.g. "1/50", "1/250" or 1s.
+        :return: Value indicating the success of the operation
+        """
+        return self.__set_cmd("shutterspeed", shutter_speed)
 
-    def listIso(self,):
-        'Get a list off all possible ISO values - eg. 100, 200 or 400.'
-        return self.__listCmd("Iso")
-       
-    #%% Aperture
-    def setAperture(self, aperture: float):
-        'Set the aperture - eg. 2.8 or 8.0.'
-        return self.__setCmd("aperture", str(aperture))
-    
-    def getAperture(self):
-        'Get the current aperture - eg. 2.8 or 8.0.'
-        return self.__getCmd("aperture")
-    
-    def listAperture(self):
-        'Get a list off all possible aperture values - eg. 2.8 or 8.0.'
-        return self.__listCmd("aperture")
-    
-    #%% Exposure Compensation
-    def setExposureComp(self, ec: str):
-        'Set the exposure compensation - eg. "-1.0" or "+2.3"'
-        return self.__setCmd("exposurecompensation", ec)
-    
-    def getExposureComp(self):
-        'Get the current exposure compensation - eg. "-1.0" or "+2.3"'
-        return self.__getCmd("exposurecompensation")
-    
-    def listExposureComp(self):
-        'Get a list off all possible exposure compensation values - eg. "-1.0" or "+2.3"'
-        return self.__listCmd("exposurecompensation")
-    
-    #%% Compression
-    def setCompression(self, comp: str):
-        'Set the compression - eg. "RAW" or "JPEG (BASIC)"'
-        return self.__setCmd("compressionsetting", comp)
-    
-    def getCompression(self):
-        'Get the current compression - eg. "RAW" or "JPEG (BASIC)"'
-        return self.__getCmd("compressionsetting")
-    
-    def listCompression(self):
-        'Get a list off all possible compression setting - eg. "RAW" or "JPEG (BASIC)"'
-        return self.__listCmd("compressionsetting")
-    
-    #%% Whitebalance   
-    def setWhitebalance(self, wb: str):
-         'Set the white balance - eg. "Auto" or "Daylight" or "Cloudy"'
-         return self.__setCmd("whitebalance", wb)
-     
-    def getWhitebalance(self):
-         'Get the current white balance - eg. "Auto" or "Daylight" or "Cloudy"'
-         return self.__getCmd("whitebalance")
-    
-    def listWhitebalance(self):
-         'Get a list off all possible white balance values - eg. "Auto" or "Daylight" or "Cloudy"'
-         return self.__listCmd("whitebalance")
+    def get_shutterspeed(self):
+        """
+        Get the current shutter speed
+        :return: Value indicating the success of the operation
+        """
+        return self.__get_cmd("shutterspeed")
 
-    #%% Commands
-    def runCmd(self, cmd: str):
-        'Run a generic command directly with CameraControlRemoteCmd.exe'
-        r = subprocess.check_output("cd %s && CameraControlRemoteCmd.exe /c %s" % (self.exeDir, cmd), shell = True).decode()
-        if 'null' in r: # Success
+    def list_shutterspeed(self):
+        """
+        Get a list off all possible shutter speeds
+        :return: Value indicating the success of the operation
+        """
+        return self.__list_cmd("shutterspeed")
+
+    # %% ISO
+    def set_iso(self, iso: int = 100) -> int:
+        """
+        Set the current ISO value
+        :param iso: Current ISO value - e.g. 100, 200 or 400.
+        :return: Value indicating the success of the operation
+        """
+        return self.__set_cmd("Iso", str(iso))
+
+    def get_iso(self):
+        """
+        Get the current ISO Value.
+        :return: Value indicating the success of the operation
+        """
+        return self.__get_cmd("Iso")
+
+    def list_iso(self) -> list:
+        """
+        Get a list off all possible ISO values - e.g. 100, 200 or 400.
+        :return: Value indicating the success of the operation
+        """
+        return self.__list_cmd("Iso")
+
+    # %% Aperture
+    def set_aperture(self, aperture: float = 2.8) -> int:
+        """
+        Set the aperture
+        :param aperture: Set the cam aperture - e.g. 2.8 or 8.0.
+        :return: Value indicating the success of the operation
+        """
+        return self.__set_cmd("aperture", str(aperture))
+
+    def get_aperture(self) -> int | str:
+        """
+        Get the current aperture - e.g. 2.8 or 8.0.
+        :return: Value indicating the success of the operation
+        """
+        return self.__get_cmd("aperture")
+
+    def list_aperture(self) -> list:
+        """
+        Get a list off all possible aperture values - e.g. 2.8 or 8.0.
+        :return: Value indicating the success of the operation
+        """
+        return self.__list_cmd("aperture")
+
+    # %% Exposure Compensation
+    def set_exposure_comp(self, ec: str = "0.0") -> int:
+        """
+        Set the exposure compensation - e.g. "-1.0" or "+2.3"
+        :param ec: Current exposure compensation - e.g. "-1.0" or "+2.3"
+        :return: Value indicating the success of the operation
+        """
+        return self.__set_cmd("exposurecompensation", ec)
+
+    def get_exposure_comp(self) -> int | str:
+        """
+        Get the current exposure compensation - e.g. "-1.0" or "+2.3"
+        :return: Value indicating the success of the operation
+        """
+        return self.__get_cmd("exposurecompensation")
+
+    def list_exposure_comp(self) -> list:
+        """
+        Get a list off all possible exposure compensation values - e.g. "-1.0" or "+2.3"
+        :return: List of all possible exposure compensation values - e.g. "-1.0" or "+2.3"
+        """
+        return self.__list_cmd("exposurecompensation")
+
+    # %% Compression
+    def set_compression(self, comp: str = "RAW") -> int:
+        """
+        Set the compression - e.g. "RAW" or "JPEG (BASIC)"
+        :param comp: Current compression. default = "RAW"
+        :return: Value indicating the success of the operation
+        """
+        return self.__set_cmd("compressionsetting", comp)
+
+    def get_compression(self) -> int | str:
+        """
+        Get the current compression - e.g. "RAW" or "JPEG (BASIC)"
+        :return: Value indicating the success of the operation
+        """
+        return self.__get_cmd("compressionsetting")
+
+    def list_compression(self) -> list:
+        """
+        Get a list off all possible compression setting - e.g. "RAW" or "JPEG (BASIC)"
+        :return: Value indicating the success of the operation
+        """
+        return self.__list_cmd("compressionsetting")
+
+    # %% Whitebalance
+    def set_whitebalance(self, wb: str) -> int:
+        """
+        Set the white balance - e.g. "Auto" or "Daylight" or "Cloudy"
+        :param wb: Set the white balance - e.g. "Auto" or "Daylight" or "Cloudy"
+        :return: Value indicating the success of the operation
+        """
+        return self.__set_cmd("whitebalance", wb)
+
+    def get_whitebalance(self) -> int | str:
+        """
+        Get the current white balance - e.g. "Auto" or "Daylight" or "Cloudy"
+        :return: Value indicating the success of the operation
+        """
+        return self.__get_cmd("whitebalance")
+
+    def list_whitebalance(self) -> list:
+        """
+        Get a list off all possible white balance values - e.g. "Auto" or "Daylight" or "Cloudy"
+        :return: Value indicating the success of the operation
+        """
+        return self.__list_cmd("whitebalance")
+
+    # %% Commands
+    def run_cmd(self, cmd: str) -> int:
+        """
+        Run a generic command directly with CameraControlRemoteCmd.exe
+        :param cmd: Command to run on digiCamControl
+        :return: Value indicating the success of the operation
+        """
+        r = subprocess.check_output("cd %s && CameraControlRemoteCmd.exe /c %s" % (self.exeDir, cmd),
+                                    shell=True).decode()
+        if 'null' in r:  # Success
             return 0
-        elif r'""' in r: # Success
+        elif r'""' in r:  # Success
             return 0
-        else:           # Error
-            print("Error: %s" % r) # Format output message
+        else:  # Error
+            print("Error: %s" % r)  # Format output message
             return -1
-    
-    def __setCmd(self, cmd: str, value: str):
-        'Run a set command with CameraControlRemoteCmd.exe'
-        r = subprocess.check_output("cd %s && CameraControlRemoteCmd.exe /c set %s" % (self.exeDir, cmd + " " + value), shell = True).decode()
-        if 'null' in r: # Success
+
+    def __set_cmd(self, cmd: str, value: str) -> int:
+        """
+        Run a set command with CameraControlRemoteCmd.exe
+        :param cmd: Command to run on digiCamControl
+        :param value: Value to set the command to
+        :return: Value indicating the success of the operation
+        """
+        r = subprocess.check_output("cd %s && CameraControlRemoteCmd.exe /c set %s" % (self.exeDir, cmd + " " + value),
+                                    shell=True).decode()
+        if 'null' in r:  # Success
             print("Set the %s to %s" % (cmd, value))
             return 0
-        else:           # Error
-             print("Error: %s" % r[109:]) # Format output message
-             return -1
-    
-    def __getCmd(self, cmd: str):
-        'Run a get command with CameraControlRemoteCmd.exe'
-        r = subprocess.check_output("cd %s && CameraControlRemoteCmd.exe /c get %s" % (self.exeDir, cmd), shell = True).decode()
-        if 'Unknown parameter' in r: # Error
-            print("Error: %s" % r[109:]) # Format output message
+        else:  # Error
+            print("Error: %s" % r[109:])  # Format output message
             return -1
-        else:           # Success
-            returnValue = r[96:-6]
-            print("Current %s: %s" % (cmd, returnValue)) # Format output message
-            return returnValue
-            
-    def __listCmd(self, cmd: str):
-        'Run a list command with CameraControlRemoteCmd.exe'
-        r = subprocess.check_output("cd %s && CameraControlRemoteCmd.exe /c list %s" % (self.exeDir, cmd), shell = True).decode()
-        if 'Unknown parameter' in r: # Error
-            print("Error: %s" % r[109:]) # Format output message
+
+    def __get_cmd(self, cmd: str) -> int | str:
+        """
+        Run a get command with CameraControlRemoteCmd.exe
+        :param cmd: Command to run on digiCamControl
+        :return: Value indicating the success of the operation
+        """
+        r = subprocess.check_output("cd %s && CameraControlRemoteCmd.exe /c get %s" % (self.exeDir, cmd),
+                                    shell=True).decode()
+        if 'Unknown parameter' in r:  # Error
+            print("Error: %s" % r[109:])  # Format output message
             return -1
-        else:           # Success
-            returnList = r[96:-6].split(",") # Format response and turn into a list
-            returnList = [e[1:-1] for e in returnList] # Remove "" from string
-            print("List of all possible %ss: %s" % (cmd, returnList)) # Format output message
-            return returnList
+        else:  # Success
+            return_value = r[96:-6]
+            print("Current %s: %s" % (cmd, return_value))  # Format output message
+            return return_value
+
+    def __list_cmd(self, cmd: str) -> int | list[str]:
+        """
+        Run a list command with CameraControlRemoteCmd.exe
+        :param cmd: Command to run on digiCamControl
+        :return: Value indicating the success of the operation
+        """
+        r = subprocess.check_output("cd %s && CameraControlRemoteCmd.exe /c list %s" % (self.exeDir, cmd),
+                                    shell=True).decode()
+        if 'Unknown parameter' in r:  # Error
+            print("Error: %s" % r[109:])  # Format output message
+            return -1
+        else:  # Success
+            return_list = r[96:-6].split(",")  # Format response and turn into a list
+            return_list = [e[1:-1] for e in return_list]  # Remove "" from string
+            print("List of all possible %ss: %s" % (cmd, return_list))  # Format output message
+            return return_list
 
 
-#%% Unittests
+# %% Unittests
 if __name__ == '__main__':
-    
     # TODO: Coverage for whole document
-    
+
     print("Beginning unit tests:")
-    
+
     camera = Camera()
-    
-    assert(isinstance(camera.listShutterspeed(), list))
-    temp = camera.listShutterspeed()[0]
-    assert(camera.setShutterspeed(temp) == 0)
-    assert(camera.getShutterspeed() == temp)
-    
-    assert(isinstance(camera.listIso(), list))
-    temp = camera.listIso()[0]
-    assert(camera.setIso(temp) == 0)
-    assert(camera.getIso() == temp)
-    
-    assert(isinstance(camera.listAperture(), list))
-    temp = camera.listAperture()[0]
-    assert(camera.setAperture(temp) == 0)
-    assert(camera.getAperture() == temp)
-    
-    assert(isinstance(camera.listExposureComp(), list))
-    temp = camera.listExposureComp()[0]
-    assert(camera.setExposureComp(temp) == 0)
-    assert(camera.getExposureComp() == temp)
-    
-    assert(isinstance(camera.listCompression(), list))
-    temp = camera.listCompression()[0]
-    assert(camera.setCompression(temp) == 0)
-    assert(camera.getCompression() == temp)
-    
-    assert(isinstance(camera.listWhitebalance(), list))
-    temp = camera.listWhitebalance()[0]
-    assert(camera.setWhitebalance(temp) == 0)
-    assert(camera.getWhitebalance() == temp)
-    
+
+    assert (isinstance(camera.list_shutterspeed(), list))
+    temp = camera.list_shutterspeed()[0]
+    assert (camera.set_shutterspeed(temp) == 0)
+    assert (camera.get_shutterspeed() == temp)
+
+    assert (isinstance(camera.list_iso(), list))
+    temp = camera.list_iso()[0]
+    assert (camera.set_iso(temp) == 0)
+    assert (camera.get_iso() == temp)
+
+    assert (isinstance(camera.list_aperture(), list))
+    temp = camera.list_aperture()[0]
+    assert (camera.set_aperture(temp) == 0)
+    assert (camera.get_aperture() == temp)
+
+    assert (isinstance(camera.list_exposure_comp(), list))
+    temp = camera.list_exposure_comp()[0]
+    assert (camera.set_exposure_comp(temp) == 0)
+    assert (camera.get_exposure_comp() == temp)
+
+    assert (isinstance(camera.list_compression(), list))
+    temp = camera.list_compression()[0]
+    assert (camera.set_compression(temp) == 0)
+    assert (camera.get_compression() == temp)
+
+    assert (isinstance(camera.list_whitebalance(), list))
+    temp = camera.list_whitebalance()[0]
+    assert (camera.set_whitebalance(temp) == 0)
+    assert (camera.get_whitebalance() == temp)
+
     print("End unit tests.")
