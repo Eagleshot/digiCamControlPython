@@ -15,36 +15,30 @@ class Camera:
     assumed. If openProgram is set to true, digiCamControl will automatically be opened in the background.
     """
 
-    def __init__(self, exe_dir: str = r'C:\Program Files (x86)\digiCamControl', verbose=True):
+    def __init__(self, exe_dir: str = r'C:\Program Files (x86)\digiCamControl'):
 
-        self.captureCommand = "Capture"  # Default capture command
+        self.capture_command = "Capture"  # Default capture command
 
-        if os.path.exists(exe_dir + r"/CameraControlRemoteCmd.exe"):  # Check if file path exists
-            self.exeDir = exe_dir
-            self.verbose = verbose  # TODO Add ability to mute output
+        # Check if file path exists
+        if os.path.exists(exe_dir + r"/CameraControlRemoteCmd.exe"):
+            self.exe_dir = exe_dir
 
-            if not ("CameraControl.exe" in (i.name() for i in psutil.process_iter())):  # Open program if closed
-                self.open_program()
+            # Open program if closed
+            if not "CameraControl.exe" in (i.name() for i in psutil.process_iter()):
+                subprocess.Popen(self.exe_dir + r"/CameraControl.exe")
                 time.sleep(10)
 
         else:
             print("Error: digiCamControl not found.")
-
-    def open_program(self):
-        """
-        Opens the CameraControl.exe application.
-        :return:
-        """
-        subprocess.Popen(self.exeDir + r"/CameraControl.exe")
 
     # %% Capture
     def capture(self, location: str = "") -> int | str:
         """
         Takes a photo - filename and location can be specified in string location, otherwise the default will be used.
         :param location: Location and filename of the image to be saved.
-        :return: an integer indicating the success of the operation
+        :return: An integer indicating the success of the operation
         """
-        r = self.run_cmd(self.captureCommand + " " + location)
+        r = self.run_cmd(self.capture_command + " " + location)
         if r == 0:
             print("Captured image.")
 
@@ -55,7 +49,7 @@ class Camera:
         """
         Set the folder where the pictures are saved.
         :param folder: Folder where the pictures are saved.
-        :return:
+        :return: Value indicating the success of the operation (0 = success, -1 = error)
         """
         self.__set_cmd("session.folder", folder)
 
@@ -71,7 +65,7 @@ class Camera:
         """
         Set the counter to a specific number (default = 0).
         :param counter: Integer number to set the counter to. default = 0
-        :return:
+        :return: Value indicating the success of the operation (0 = success, -1 = error)
         """
         self.__set_cmd("session.Counter", str(counter))
 
@@ -80,14 +74,18 @@ class Camera:
         """
         Define where the pictures should be saved - "Save_to_camera_only", "Save_to_PC_only" or
         "Save:to_PC_and_camera" :param location: Value to set the transfer mode to. Possible values:
-        "Save_to_camera_only", "Save_to_PC_only" or "Save:to_PC_and_camera" :return: Code indicating the success of
-        the operation
+        "Save_to_camera_only", "Save_to_PC_only" or "Save:to_PC_and_camera"
+        :return: Code indicating the success of the operation
         """
-        print("The pictures will be saved to %s." % location)
-        return self.run_cmd("set transfer %s" % location)
+        print(f"The pictures will be saved to: {location}.")
+        return self.run_cmd(f"set transfer {location}")
 
     # %% Autofocus
     def show_live_view(self) -> int:
+        """
+        Show the live view window.
+        :return: Code indicating the success of the operation
+        """
         print("Showing live view window.")
         return self.run_cmd("do LiveViewWnd_Show")
 
@@ -98,10 +96,10 @@ class Camera:
         :return:
         """
         if status:
-            self.captureCommand = "Capture"
+            self.capture_command = "Capture"
             print("Autofocus is on.")
         else:
-            self.captureCommand = "CaptureNoAf"
+            self.capture_command = "CaptureNoAf"
             print("Autofocus is off.")
 
     # %% Shutterspeed
@@ -249,15 +247,17 @@ class Camera:
         :param cmd: Command to run on digiCamControl
         :return: Value indicating the success of the operation
         """
-        r = subprocess.check_output("cd %s && CameraControlRemoteCmd.exe /c %s" % (self.exeDir, cmd),
-                                    shell=True).decode()
+        r = subprocess.check_output(
+            f"cd {self.exe_dir} && CameraControlRemoteCmd.exe /c {cmd}", shell=True).decode()
+
         if 'null' in r:  # Success
             return 0
-        elif r'""' in r:  # Success
+
+        if r'""' in r:  # Success
             return 0
-        else:  # Error
-            print("Error: %s" % r)  # Format output message
-            return -1
+
+        print(f"Error: {r}")  # Format output message
+        return -1
 
     def __set_cmd(self, cmd: str, value: str) -> int:
         """
@@ -266,14 +266,15 @@ class Camera:
         :param value: Value to set the command to
         :return: Value indicating the success of the operation
         """
-        r = subprocess.check_output("cd %s && CameraControlRemoteCmd.exe /c set %s" % (self.exeDir, cmd + " " + value),
+        r = subprocess.check_output(f"cd {self.exe_dir} && CameraControlRemoteCmd.exe /c set {cmd} {value}",
                                     shell=True).decode()
         if 'null' in r:  # Success
-            print("Set the %s to %s" % (cmd, value))
+            print(f"Set the {cmd} to {value}.")
             return 0
-        else:  # Error
-            print("Error: %s" % r[109:])  # Format output message
-            return -1
+
+        return_value = r[109:]
+        print(f"Error: {return_value}")
+        return -1
 
     def __get_cmd(self, cmd: str) -> int | str:
         """
@@ -281,15 +282,17 @@ class Camera:
         :param cmd: Command to run on digiCamControl
         :return: Value indicating the success of the operation
         """
-        r = subprocess.check_output("cd %s && CameraControlRemoteCmd.exe /c get %s" % (self.exeDir, cmd),
-                                    shell=True).decode()
+        r = subprocess.check_output(
+            f"cd {self.exe_dir} && CameraControlRemoteCmd.exe /c get {cmd}", shell=True).decode()
+
         if 'Unknown parameter' in r:  # Error
-            print("Error: %s" % r[109:])  # Format output message
+            return_value = r[109:]
+            print(f"Error: {return_value}")  # Format output message
             return -1
-        else:  # Success
-            return_value = r[96:-6]
-            print("Current %s: %s" % (cmd, return_value))  # Format output message
-            return return_value
+
+        return_value = r[96:-6]
+        print(f"Current {cmd}: {return_value}")  # Format output message
+        return return_value
 
     def __list_cmd(self, cmd: str) -> int | list[str]:
         """
@@ -297,16 +300,20 @@ class Camera:
         :param cmd: Command to run on digiCamControl
         :return: Value indicating the success of the operation
         """
-        r = subprocess.check_output("cd %s && CameraControlRemoteCmd.exe /c list %s" % (self.exeDir, cmd),
+        r = subprocess.check_output(f"cd {self.exe_dir} && CameraControlRemoteCmd.exe /c list {cmd}",
                                     shell=True).decode()
         if 'Unknown parameter' in r:  # Error
-            print("Error: %s" % r[109:])  # Format output message
+            return_value = r[109:]
+            print(f"Error: {return_value}")  # Format output message
             return -1
-        else:  # Success
-            return_list = r[96:-6].split(",")  # Format response and turn into a list
-            return_list = [e[1:-1] for e in return_list]  # Remove "" from string
-            print("List of all possible %ss: %s" % (cmd, return_list))  # Format output message
-            return return_list
+
+        # Format response and turn into a list
+        return_list = r[96:-6].split(",")
+        return_list = [e[1:-1] for e in return_list]  # Remove "" from string
+
+        # Format output message
+        print(f"List of all possible {cmd}s: {return_list}")
+        return return_list
 
 
 # %% Unittests
@@ -316,35 +323,36 @@ if __name__ == '__main__':
     print("Beginning unit tests:")
 
     camera = Camera()
+    assert isinstance(camera, Camera)
 
     assert (isinstance(camera.list_shutterspeed(), list))
     temp = camera.list_shutterspeed()[0]
-    assert (camera.set_shutterspeed(temp) == 0)
-    assert (camera.get_shutterspeed() == temp)
+    assert camera.set_shutterspeed(temp) == 0
+    assert camera.get_shutterspeed() == temp
 
     assert (isinstance(camera.list_iso(), list))
     temp = camera.list_iso()[0]
-    assert (camera.set_iso(temp) == 0)
-    assert (camera.get_iso() == temp)
+    assert camera.set_iso(temp) == 0
+    assert camera.get_iso() == temp
 
     assert (isinstance(camera.list_aperture(), list))
     temp = camera.list_aperture()[0]
-    assert (camera.set_aperture(temp) == 0)
-    assert (camera.get_aperture() == temp)
+    assert camera.set_aperture(temp) == 0
+    assert camera.get_aperture() == temp
 
-    assert (isinstance(camera.list_exposure_comp(), list))
+    assert isinstance(camera.list_exposure_comp(), list)
     temp = camera.list_exposure_comp()[0]
-    assert (camera.set_exposure_comp(temp) == 0)
-    assert (camera.get_exposure_comp() == temp)
+    assert camera.set_exposure_comp(temp) == 0
+    assert camera.get_exposure_comp() == temp
 
     assert (isinstance(camera.list_compression(), list))
     temp = camera.list_compression()[0]
-    assert (camera.set_compression(temp) == 0)
-    assert (camera.get_compression() == temp)
+    assert camera.set_compression(temp) == 0
+    assert camera.get_compression() == temp
 
     assert (isinstance(camera.list_whitebalance(), list))
     temp = camera.list_whitebalance()[0]
-    assert (camera.set_whitebalance(temp) == 0)
-    assert (camera.get_whitebalance() == temp)
+    assert camera.set_whitebalance(temp) == 0
+    assert camera.get_whitebalance() == temp
 
     print("End unit tests.")
