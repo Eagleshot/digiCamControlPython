@@ -240,6 +240,22 @@ class Camera:
         """
         return self.__list_cmd("whitebalance")
 
+    # %% Video
+    def start_video(self) -> int:
+        """
+        Start recording a video.
+        :return: Value indicating the success of the operation
+        """
+        self.show_live_view() # May be necessary
+        return self.run_cmd("do StartRecord")
+
+    def stop_video(self) -> int:
+        """
+        Stop recording a video.
+        :return: Value indicating the success of the operation
+        """
+        return self.run_cmd("do StopRecord")
+
     # %% Commands
     def run_cmd(self, cmd: str) -> int:
         """
